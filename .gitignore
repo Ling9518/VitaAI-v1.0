@@ -1,0 +1,68 @@
+# Credentials & Secrets
+账户密码.txt
+*.env
+.env.*
+!*.env.example
+credentials/
+secrets/
+
+# Java
+backend/target/
+backend/*.jar
+backend/*.war
+backend/.mvn/
+backend/mvnw
+backend/mvnw.cmd
+*.class
+*.log
+*.ctxt
+.mtj.tmp/
+hs_err_pid*
+
+# IDE
+.idea/
+*.iml
+.vscode/
+*.swp
+*.swo
+*~
+.project
+.classpath
+.settings/
+
+# Node
+node_modules/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+*.tmp
+
+# Logs
+logs/
+*.log
+
+# Build
+build/
+dist/
+out/
+
+# Docker volumes
+docker/mysql/data/
+docker/redis/data/
+docker/elasticsearch/data/
+
+# Uploads
+uploads/
+storage/
+
+# Claude
+.claude/
+CLAUDE.md

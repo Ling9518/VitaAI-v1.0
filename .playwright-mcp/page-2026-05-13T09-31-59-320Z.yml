@@ -1,0 +1,74 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e3]:
+    - banner [ref=e4]:
+      - generic [ref=e5]:
+        - generic [ref=e6] [cursor=pointer]:
+          - img [ref=e8]
+          - generic [ref=e12]:
+            - generic [ref=e13]: VitaAI
+            - generic [ref=e14]: 智慧医院系统
+        - navigation [ref=e15]:
+          - button "登录" [ref=e16] [cursor=pointer]
+          - button "注册" [ref=e17] [cursor=pointer]
+    - main [ref=e19]:
+      - generic [ref=e20]:
+        - generic [ref=e22]:
+          - heading "智慧医疗， 触手可及" [level=1] [ref=e23]:
+            - generic [ref=e24]: 智慧医疗，
+            - generic [ref=e25]: 触手可及
+          - paragraph [ref=e26]: 基于人工智能的医疗辅助平台，为您提供专业的疾病诊断和医疗信息查询服务
+          - generic [ref=e27]:
+            - button "立即注册" [ref=e28] [cursor=pointer]
+            - button "登录系统" [ref=e29] [cursor=pointer]
+        - generic [ref=e30]:
+          - generic [ref=e31]:
+            - img [ref=e34]
+            - generic [ref=e37]:
+              - generic [ref=e38]: "0"
+              - generic [ref=e39]: 收录疾病
+            - img [ref=e42]
+          - generic [ref=e48]:
+            - generic [ref=e49]: "0"
+            - generic [ref=e50]: 收录药品
+          - generic [ref=e53]:
+            - img [ref=e56]
+            - generic [ref=e58]:
+              - generic [ref=e59]: "0"
+              - generic [ref=e60]: 诊断技能
+            - img [ref=e63]
+          - generic [ref=e65]:
+            - img [ref=e68]
+            - generic [ref=e70]:
+              - generic [ref=e71]: "0"
+              - generic [ref=e72]: 科研成果
+            - img [ref=e75]
+        - generic [ref=e77]:
+          - generic [ref=e78]:
+            - generic [ref=e79]:
+              - heading "热门疾病" [level=3] [ref=e80]
+              - link "查看全部 →" [ref=e81] [cursor=pointer]:
+                - /url: /diseases
+            - generic [ref=e83]: 暂无数据
+          - generic [ref=e84]:
+            - generic [ref=e85]:
+              - heading "常用药品" [level=3] [ref=e86]
+              - link "查看全部 →" [ref=e87] [cursor=pointer]:
+                - /url: /drugs
+            - generic [ref=e89]: 暂无数据
+        - generic [ref=e91]:
+          - generic [ref=e92]:
+            - heading "最新科研成果" [level=3] [ref=e93]
+            - link "查看全部 →" [ref=e94] [cursor=pointer]:
+              - /url: /research
+          - generic [ref=e96]: 暂无数据
+        - generic [ref=e98]:
+          - generic [ref=e99]: ⚠️
+          - paragraph [ref=e100]:
+            - strong [ref=e101]: 免责声明：
+            - text: 本系统提供的AI诊断内容仅供参考，不能替代专业医生的诊断和治疗建议。如身体不适，请及时前往正规医院就诊。
+  - alert [ref=e102]:
+    - img [ref=e104]
+    - paragraph [ref=e106]: 请求失败
+  - alert [ref=e107]:
+    - img [ref=e109]
+    - paragraph [ref=e111]: 请求失败

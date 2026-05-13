@@ -1,0 +1,43 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "⚕️ VitaAI 智慧医院" [ref=e6] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e7]: ⚕️
+        - generic [ref=e8]: VitaAI
+        - generic [ref=e9]: 智慧医院
+      - navigation [ref=e10]:
+        - link "AI诊断" [ref=e11] [cursor=pointer]:
+          - /url: /ai-chat
+        - link "疾病库" [ref=e12] [cursor=pointer]:
+          - /url: /diseases
+        - link "药品库" [ref=e13] [cursor=pointer]:
+          - /url: /drugs
+        - link "健康档案" [ref=e14] [cursor=pointer]:
+          - /url: /health
+      - button "admin" [ref=e17] [cursor=pointer]:
+        - img [ref=e20]
+        - generic [ref=e22]: admin
+  - generic [ref=e23]:
+    - complementary [ref=e24]:
+      - generic [ref=e25]:
+        - heading "诊断记录" [level=3] [ref=e26]
+        - button "新建对话" [ref=e27] [cursor=pointer]:
+          - generic [ref=e28]: 新建对话
+      - generic [ref=e30]:
+        - img [ref=e32]
+        - paragraph [ref=e49]: 暂无诊断记录
+    - main [ref=e50]:
+      - generic [ref=e51]:
+        - generic [ref=e52]: 🩺
+        - heading "VitaAI 智能诊断" [level=2] [ref=e53]
+        - paragraph [ref=e54]: 请描述您的症状、不适感或健康问题，AI医生将为您提供专业的初步诊断建议
+        - generic [ref=e55]:
+          - generic [ref=e56] [cursor=pointer]: 我最近一直头痛，伴有恶心，是怎么回事？
+          - generic [ref=e57] [cursor=pointer]: 我有咳嗽和发烧症状，需要吃什么药？
+          - generic [ref=e58] [cursor=pointer]: 最近总是失眠，白天没精神，怎么办？
+          - generic [ref=e59] [cursor=pointer]: 我经常胃疼，饭后加重，可能是什么问题？
+      - generic [ref=e61]:
+        - textbox "请描述您的症状，AI医生将为您分析..." [ref=e63]
+        - button [disabled] [ref=e64] [cursor=pointer]:
+          - img [ref=e66]
