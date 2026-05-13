@@ -1,0 +1,41 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - generic [ref=e5]:
+      - link "⚕️ VitaAI 智慧医院" [ref=e6] [cursor=pointer]:
+        - /url: /
+        - generic [ref=e7]: ⚕️
+        - generic [ref=e8]: VitaAI
+        - generic [ref=e9]: 智慧医院
+      - navigation [ref=e10]:
+        - link "AI诊断" [ref=e11] [cursor=pointer]:
+          - /url: /ai-chat
+        - link "疾病库" [ref=e12] [cursor=pointer]:
+          - /url: /diseases
+        - link "药品库" [ref=e13] [cursor=pointer]:
+          - /url: /drugs
+        - link "健康档案" [ref=e14] [cursor=pointer]:
+          - /url: /health
+      - button "admin" [ref=e17] [cursor=pointer]:
+        - img [ref=e20]
+        - generic [ref=e22]: admin
+  - generic [ref=e23]:
+    - complementary [ref=e24]:
+      - generic [ref=e25]:
+        - heading "诊断记录" [level=3] [ref=e26]
+        - button "新建对话" [ref=e27] [cursor=pointer]:
+          - generic [ref=e28]: 新建对话
+      - generic [ref=e30]:
+        - img [ref=e32]
+        - paragraph [ref=e49]: 暂无诊断记录
+    - main [ref=e50]:
+      - generic [ref=e68]:
+        - generic [ref=e69]:
+          - generic [ref=e71]: 👤
+          - paragraph [ref=e73]: 我最近头痛，睡不好
+        - generic [ref=e76]: 🩺
+      - generic [ref=e78]:
+        - generic [ref=e79]:
+          - textbox "请描述您的症状..." [ref=e81]
+          - button [disabled] [ref=e82] [cursor=pointer]:
+            - img [ref=e84]
+        - paragraph [ref=e86]: 内容为AI诊断，想要更准确诊断，请去正规医院就诊。

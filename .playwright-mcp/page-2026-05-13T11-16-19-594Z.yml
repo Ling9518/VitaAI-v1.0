@@ -1,0 +1,24 @@
+- generic [active] [ref=e1]:
+  - generic [ref=e125]:
+    - link "⚕️ VitaAI" [ref=e126] [cursor=pointer]:
+      - /url: /
+      - generic [ref=e127]: ⚕️
+      - generic [ref=e128]: VitaAI
+    - heading "欢迎回来" [level=2] [ref=e129]
+    - paragraph [ref=e130]: 登录您的账号，继续健康之旅
+    - generic [ref=e131]:
+      - generic [ref=e135]:
+        - img [ref=e138]
+        - textbox "用户名或邮箱" [ref=e140]: 2045562382@qq.com
+      - generic [ref=e144]:
+        - img [ref=e147]
+        - textbox "密码" [ref=e150]: "123456"
+        - img [ref=e153] [cursor=pointer]
+      - button "登录" [ref=e158] [cursor=pointer]
+    - paragraph [ref=e159]:
+      - text: 还没有账号？
+      - link "立即注册" [ref=e160] [cursor=pointer]:
+        - /url: /register
+  - alert [ref=e161]:
+    - img [ref=e163]
+    - paragraph [ref=e165]: 账号或密码错误

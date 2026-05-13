@@ -1,0 +1,86 @@
+spring:
+  application:
+    name: vitaai
+
+  datasource:
+    url: jdbc:mysql://localhost:3306/smart_hospital?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
+    username: root
+    password: 689518
+    driver-class-name: com.mysql.cj.jdbc.Driver
+    hikari:
+      minimum-idle: 5
+      maximum-pool-size: 20
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      connection-timeout: 30000
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+      timeout: 5000ms
+      lettuce:
+        pool:
+          max-active: 20
+          max-idle: 10
+          min-idle: 5
+
+  mail:
+    host: smtp.qq.com
+    port: 587
+    username: 3676392400@qq.com
+    password: htrqzxmcslevdcba
+    properties:
+      mail.smtp.auth: true
+      mail.smtp.starttls.enable: true
+      mail.smtp.ssl.trust: smtp.qq.com
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 50MB
+
+server:
+  port: 8080
+  servlet:
+    encoding:
+      charset: UTF-8
+      enabled: true
+      force: true
+
+# JWT配置
+jwt:
+  secret: VitaAI-Smart-Hospital-JWT-Secret-Key-2026-Make-It-Longer-For-Security
+  expiration: 7200000
+  refresh-expiration: 604800000
+
+# AI服务配置 (DeepSeek via Spark proxy)
+ai:
+  api-key: 50ede8c403bdddb0e6f75ebbe32ef579:MTBlYjIyMmQ3NzBlMjIxNmFiZmUzNjYy
+  base-url: https://maas-coding-api.cn-huabei-1.xf-yun.com/v2
+  model: astron-code-latest
+  temperature: 0.7
+  max-tokens: 2000
+
+# 审计日志配置
+audit:
+  enabled: true
+  async-enabled: true
+  retention-days: 180
+
+# 日志
+logging:
+  level:
+    com.vitaai: DEBUG
+    org.springframework.security: INFO
+  file:
+    path: ./logs

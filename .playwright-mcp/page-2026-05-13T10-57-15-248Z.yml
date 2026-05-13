@@ -1,0 +1,31 @@
+- generic [ref=e4]:
+  - link "⚕️ VitaAI" [ref=e5] [cursor=pointer]:
+    - /url: /
+    - generic [ref=e6]: ⚕️
+    - generic [ref=e7]: VitaAI
+  - heading "创建账号" [level=2] [ref=e8]
+  - paragraph [ref=e9]: 注册VitaAI，开启AI智能健康管理
+  - generic [ref=e10]:
+    - generic [ref=e14]:
+      - img [ref=e17]
+      - textbox "用户名（3-20位）" [ref=e19]
+    - generic [ref=e23]:
+      - img [ref=e26]
+      - textbox "邮箱地址" [ref=e29]
+    - generic [ref=e33]:
+      - img [ref=e36]
+      - textbox "密码（6-20位）" [ref=e39]
+    - generic [ref=e43]:
+      - img [ref=e46]
+      - textbox "确认密码" [ref=e49]
+    - generic [ref=e52]:
+      - generic [ref=e54]:
+        - img [ref=e57]
+        - textbox "邮箱验证码" [ref=e59]
+      - button "获取验证码" [ref=e60] [cursor=pointer]:
+        - generic [ref=e61]: 获取验证码
+    - button "注册" [ref=e64] [cursor=pointer]
+  - paragraph [ref=e65]:
+    - text: 已有账号？
+    - link "立即登录" [ref=e66] [cursor=pointer]:
+      - /url: /login
