@@ -7,13 +7,15 @@
         <p>查看您的AI诊断历史和详细报告</p>
       </div>
 
-      <div v-if="records.length" class="history-list">
+      <div v-if="loading" class="loading-state"><el-icon class="is-loading"><Loading /></el-icon> 加载中...</div>
+      <div v-else-if="records.length" class="history-list">
         <div class="history-card card" v-for="r in records" :key="r.id" @click="showDetail(r)">
+          <button class="history-delete" @click.stop="handleDelete(r)" title="删除记录">&times;</button>
           <div class="history-header">
             <h4>{{ r.symptomSummary || '未命名诊断' }}</h4>
-            <span class="severity-tag" :class="(r.severityLevel || 'low').toLowerCase()">{{ severityMap[r.severityLevel] || '未知' }}</span>
+            <span class="severity-tag" :class="(r.severityLevel || 'LOW').toLowerCase()">{{ severityMap[r.severityLevel ?? 'LOW'] || '未知' }}</span>
           </div>
-          <p class="history-summary">{{ truncateText(r.conversationSummary || r.symptomsDetail, 120) }}</p>
+          <p class="history-summary">{{ truncateText((r.conversationSummary || r.symptomsDetail) ?? null, 120) }}</p>
           <div class="history-meta">
             <span>{{ formatDate(r.createdAt) }}</span>
             <span>{{ r.messageCount || 0 }} 条消息</span>
@@ -55,40 +57,50 @@
 import { ref, onMounted } from 'vue'
 import AppHeader from '@/components/layout/AppHeader.vue'
 import api from '@/api/index'
+import { ElMessage } from 'element-plus'
+import { Loading } from '@element-plus/icons-vue'
+import type { DiagnosisRecord, DiagnosisDetail } from '@/types'
+import { truncateText, formatDate, severityMap, feedbackMap } from '@/utils'
 
-const records = ref<any[]>([])
+const records = ref<DiagnosisRecord[]>([])
+const loading = ref(false)
 const page = ref(1)
 const pageSize = 20
 const total = ref(0)
 const dialogVisible = ref(false)
-const selectedRecord = ref<any>(null)
-
-const severityMap: Record<string, string> = { LOW: '低风险', MEDIUM: '中等风险', HIGH: '高风险', CRITICAL: '危险' }
-const feedbackMap: Record<string, string> = { ACCURATE: '准确', MOSTLY_ACCURATE: '大致准确', INACCURATE: '不准确', PENDING: '待评价' }
-
-function truncateText(text: string, len: number) {
-  return text && text.length > len ? text.substring(0, len) + '...' : text || ''
-}
-
-function formatDate(date: string) {
-  return date ? new Date(date).toLocaleDateString('zh-CN', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : ''
-}
+const selectedRecord = ref<DiagnosisDetail | null>(null)
 
 async function fetchData() {
+  loading.value = true
   try {
     const res = await api.get('/ai/diagnoses', { params: { page: page.value, pageSize } })
     const data = res.data.data
     records.value = data.list || []
     total.value = data.pagination?.total || 0
-  } catch { /* empty */ }
+  } catch {
+    ElMessage.error('加载诊断记录失败')
+  } finally {
+    loading.value = false
+  }
 }
 
-async function showDetail(r: any) {
+async function handleDelete(r: DiagnosisRecord) {
+  if (!confirm('确定删除此诊断记录吗？')) return
+  try {
+    await api.delete(`/ai/diagnoses/${r.id}`)
+    ElMessage.success('删除成功')
+    fetchData()
+  } catch { /* handled by interceptor */ }
+}
+
+async function showDetail(r: DiagnosisRecord) {
   try {
     const res = await api.get(`/ai/diagnoses/${r.id}`)
     selectedRecord.value = res.data.data
     dialogVisible.value = true
-  } catch { /* empty */ }
+  } catch {
+    ElMessage.error('加载诊断详情失败')
+  }
 }
 
 onMounted(() => fetchData())
@@ -96,32 +108,53 @@ onMounted(() => fetchData())
 
 <style scoped>
 .history-page { min-height: 100vh; display: flex; flex-direction: column; }
-.page-hero { text-align: center; margin-bottom: 40px; }
-.page-hero h1 { font-size: 36px; font-weight: 800; margin-bottom: 12px; }
+.page-hero { text-align: center; margin-bottom: 44px; }
+.page-hero h1 { font-size: 38px; font-weight: 800; margin-bottom: 12px; letter-spacing: -0.5px; }
 .page-hero p { color: var(--text-secondary); font-size: 16px; }
 
 .history-list { display: flex; flex-direction: column; gap: 16px; }
-.history-card { cursor: pointer; padding: 24px; }
-.history-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+.history-card {
+  cursor: pointer; padding: 28px 32px; transition: all .3s cubic-bezier(.4,0,.2,1);
+  border: 1px solid var(--border); position: relative; overflow: hidden;
+}
+.history-delete {
+  position: absolute; top: 12px; right: 16px; z-index: 2;
+  width: 28px; height: 28px; border-radius: 50%;
+  border: none; background: transparent; color: var(--text-light);
+  font-size: 22px; line-height: 1; cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  opacity: 0; transition: all .2s ease;
+}
+.history-card:hover .history-delete { opacity: 1; }
+.history-delete:hover { background: #fee2e2; color: #dc2626; }
+.history-card::before {
+  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+  background: linear-gradient(180deg, var(--primary), var(--accent));
+  transform: scaleY(0); transition: transform .3s ease;
+}
+.history-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-md); border-color: transparent; }
+.history-card:hover::before { transform: scaleY(1); }
+.history-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
 .history-header h4 { font-size: 18px; font-weight: 700; }
-.severity-tag { padding: 4px 12px; border-radius: 50px; font-size: 12px; font-weight: 600; }
+.severity-tag { padding: 4px 14px; border-radius: 50px; font-size: 12px; font-weight: 600; }
 .severity-tag.low { background: #d1fae5; color: #065f46; }
 .severity-tag.medium { background: #fef3c7; color: #92400e; }
 .severity-tag.high { background: #fee2e2; color: #991b1b; }
 .severity-tag.critical { background: #fce7f3; color: #9d174d; }
-.history-summary { color: var(--text-secondary); font-size: 14px; line-height: 1.6; margin-bottom: 12px; }
-.history-meta { display: flex; gap: 16px; font-size: 13px; color: var(--text-light); }
+.history-summary { color: var(--text-secondary); font-size: 14px; line-height: 1.7; margin-bottom: 14px; }
+.history-meta { display: flex; gap: 20px; font-size: 13px; color: var(--text-light); flex-wrap: wrap; }
 .feedback-tag.pending { color: var(--text-light); }
-.feedback-tag.accurate { color: var(--success); }
-.feedback-tag.mostly_accurate { color: var(--primary); }
-.feedback-tag.inaccurate { color: var(--danger); }
+.feedback-tag.accurate { color: var(--success); font-weight: 600; }
+.feedback-tag.mostly_accurate { color: var(--primary); font-weight: 600; }
+.feedback-tag.inaccurate { color: var(--danger); font-weight: 600; }
 
-.dialog-body { display: flex; flex-direction: column; gap: 16px; }
+.dialog-body { display: flex; flex-direction: column; gap: 18px; }
 .detail-row { display: flex; gap: 16px; }
 .dl { width: 80px; flex-shrink: 0; font-weight: 600; font-size: 14px; color: var(--text-secondary); }
-.detail-row span:last-child { font-size: 14px; line-height: 1.6; }
+.detail-row span:last-child { font-size: 14px; line-height: 1.7; }
 .warning { color: var(--danger); font-weight: 600; }
 
-.pager { display: flex; justify-content: center; margin-top: 40px; }
-.app-footer { text-align: center; padding: 32px; color: var(--text-light); font-size: 14px; border-top: 1px solid var(--border); margin-top: auto; }
+.loading-state { text-align: center; padding: 60px; color: var(--text-light); font-size: 15px; }
+.pager { display: flex; justify-content: center; margin-top: 44px; }
+.app-footer { text-align: center; padding: 36px; color: var(--text-light); font-size: 14px; border-top: 1px solid var(--border); margin-top: auto; }
 </style>

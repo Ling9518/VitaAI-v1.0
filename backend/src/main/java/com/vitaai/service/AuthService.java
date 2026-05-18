@@ -6,12 +6,14 @@ import com.vitaai.entity.User;
 import com.vitaai.repository.UserRepository;
 import com.vitaai.security.JwtService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.security.SecureRandom;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -24,7 +26,11 @@ public class AuthService {
     private final JwtService jwtService;
     private final JavaMailSender mailSender;
 
-    // 简单的内存验证码存储（生产环境应使用Redis）
+    @Value("${spring.mail.username}")
+    private String mailFrom;
+
+    private final SecureRandom secureRandom = new SecureRandom();
+
     private final Map<String, VerificationCode> codeStore = new HashMap<>();
 
     @Transactional
@@ -59,6 +65,8 @@ public class AuthService {
                 .realName(request.getRealName())
                 .gender(User.Gender.UNKNOWN)
                 .doctorLicense(request.getDoctorLicense())
+                .doctorDept(request.getDoctorDept())
+                .doctorTitle(request.getDoctorTitle())
                 .isVerified(true)
                 .build();
         userRepository.save(user);
@@ -127,15 +135,41 @@ public class AuthService {
     }
 
     public void sendVerificationCode(String email, String type) {
-        String code = String.format("%06d", new Random().nextInt(999999));
+        String code = String.format("%06d", secureRandom.nextInt(999999));
         codeStore.put(email, new VerificationCode(code, LocalDateTime.now().plusMinutes(5)));
 
         SimpleMailMessage message = new SimpleMailMessage();
-        message.setFrom("3676392400@qq.com");
+        message.setFrom(mailFrom);
         message.setTo(email);
         message.setSubject("VitaAI智慧医院 - 验证码");
         message.setText("您的验证码是：" + code + "\n有效期5分钟，请勿泄露给他人。\n\n如非本人操作，请忽略此邮件。");
         mailSender.send(message);
+    }
+
+    public void verifyEmail(String email, String code) {
+        VerificationCode vc = codeStore.get(email);
+        if (vc == null || vc.isExpired() || !vc.code.equals(code)) {
+            throw new RuntimeException("验证码错误或已过期");
+        }
+        codeStore.remove(email);
+    }
+
+    @Transactional
+    public void resetPassword(String email, String code, String newPassword, String confirmPassword) {
+        if (!newPassword.equals(confirmPassword)) {
+            throw new RuntimeException("两次密码不一致");
+        }
+        VerificationCode vc = codeStore.get(email);
+        if (vc == null || vc.isExpired() || !vc.code.equals(code)) {
+            throw new RuntimeException("验证码错误或已过期");
+        }
+        codeStore.remove(email);
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("该邮箱未注册"));
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setLoginAttempts(0);
+        user.setLockedUntil(null);
+        userRepository.save(user);
     }
 
     public Map<String, Object> refreshToken(String refreshToken) {

@@ -16,6 +16,9 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
+
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -137,6 +140,92 @@ public class AIService {
         return result;
     }
 
+    public SseEmitter streamChat(Long userId, ChatRequest request) {
+        SseEmitter emitter = new SseEmitter(300_000L); // 5 min timeout
+        new Thread(() -> {
+            try {
+                // Send initial connected event immediately
+                Map<String, Object> connected = new HashMap<>();
+                connected.put("type", "connected");
+                emitter.send(SseEmitter.event().name("message").data(connected));
+
+                Map<String, Object> result = chat(userId, request);
+                String content = (String) result.get("content");
+                String conversationId = (String) result.get("conversationId");
+
+                // Stream content in natural word/codepoint boundaries
+                int i = 0;
+                int len = content.length();
+                while (i < len) {
+                    int end = Math.min(i + randomChunkSize(), len);
+                    // Don't break in the middle of a multi-byte char or markdown token
+                    if (end < len && Character.isHighSurrogate(content.charAt(end - 1))) {
+                        end++;
+                    }
+                    String chunk = content.substring(i, end);
+                    Map<String, Object> event = new HashMap<>();
+                    event.put("type", "chunk");
+                    event.put("content", chunk);
+                    event.put("conversationId", conversationId);
+                    emitter.send(SseEmitter.event().name("message").data(event));
+                    i = end;
+                    Thread.sleep(15 + (int)(Math.random() * 25)); // 15-40ms natural typing feel
+                }
+
+                Map<String, Object> done = new HashMap<>();
+                done.put("type", "done");
+                done.put("conversationId", conversationId);
+                emitter.send(SseEmitter.event().name("message").data(done));
+                emitter.complete();
+            } catch (Exception e) {
+                log.error("SSE stream error", e);
+                emitter.completeWithError(e);
+            }
+        });
+        return emitter;
+    }
+
+    private int randomChunkSize() {
+        return 8 + (int)(Math.random() * 28); // 8-35 chars per chunk
+    }
+
+    public Map<String, Object> generateReport(Long diagnosisId) {
+        DiagnosisRecord record = diagnosisRecordRepository.findById(diagnosisId)
+                .orElseThrow(() -> new RuntimeException("诊断记录不存在"));
+        List<AiConversation> messages = conversationRepository
+                .findByDiagnosisRecordIdOrderByCreatedAtAsc(diagnosisId);
+
+        StringBuilder report = new StringBuilder();
+        report.append("【VitaAI 智能诊断报告】\n\n");
+        report.append("报告时间：").append(LocalDateTime.now()).append("\n");
+        report.append("症状摘要：").append(record.getSymptomSummary() != null ? record.getSymptomSummary() : "无").append("\n");
+        report.append("严重程度：").append(record.getSeverityLevel() != null ? record.getSeverityLevel().name() : "未评估").append("\n");
+        report.append("是否需要就医：").append(Boolean.TRUE.equals(record.getNeedsHospital()) ? "是" : "否").append("\n");
+        report.append("总消息数：").append(messages.size()).append("\n\n");
+        report.append("【对话记录】\n");
+        for (AiConversation msg : messages) {
+            String role = msg.getSenderType() == AiConversation.SenderType.USER ? "用户" : "AI医生";
+            report.append(role).append(": ").append(msg.getContent()).append("\n\n");
+        }
+        report.append("\n【免责声明】\n内容为AI诊断，想要更准确诊断，请去正规医院就诊。");
+
+        Map<String, Object> result = new HashMap<>();
+        result.put("diagnosisId", diagnosisId);
+        result.put("report", report.toString());
+        result.put("generatedAt", LocalDateTime.now().toString());
+        return result;
+    }
+
+    public List<Map<String, Object>> getSkills() {
+        return medicalSkillService.getActiveSkills().stream().map(skill -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", skill.getId());
+            m.put("name", skill.getName());
+            m.put("description", skill.getDescription());
+            return m;
+        }).toList();
+    }
+
     @Transactional
     public void submitFeedback(Long diagnosisId, String accuracy, String comments) {
         DiagnosisRecord record = diagnosisRecordRepository.findById(diagnosisId)
@@ -148,6 +237,14 @@ public class AIService {
         record.setFeedbackDetail(comments);
         record.setFeedbackAt(LocalDateTime.now());
         diagnosisRecordRepository.save(record);
+    }
+
+    @Transactional
+    public void deleteDiagnosis(Long diagnosisId) {
+        DiagnosisRecord record = diagnosisRecordRepository.findById(diagnosisId)
+                .orElseThrow(() -> new RuntimeException("诊断记录不存在"));
+        conversationRepository.deleteByDiagnosisRecordId(diagnosisId);
+        diagnosisRecordRepository.delete(record);
     }
 
     private String getSystemPrompt(Long userId) {

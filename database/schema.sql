@@ -476,7 +476,45 @@ CREATE TABLE email_verifications (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='邮箱验证码表';
 
 -- ============================================================
--- 19. 初始化症状分类数据
+-- 19. 用户消息表
+-- ============================================================
+CREATE TABLE messages (
+    id              BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '消息ID',
+    user_id         BIGINT NOT NULL COMMENT '发送者用户ID',
+    title           VARCHAR(200) NOT NULL COMMENT '消息标题',
+    content         TEXT NOT NULL COMMENT '消息内容',
+    status          ENUM('UNREAD','READ','REPLIED') DEFAULT 'UNREAD' COMMENT '消息状态',
+    reply           TEXT COMMENT '回复内容',
+    replied_by      BIGINT COMMENT '回复者ID',
+    replied_at      DATETIME COMMENT '回复时间',
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    updated_at      DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+    FOREIGN KEY (user_id) REFERENCES users(id),
+    FOREIGN KEY (replied_by) REFERENCES users(id),
+    INDEX idx_user_id (user_id),
+    INDEX idx_status (status),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='用户消息表';
+
+-- ============================================================
+-- 20. 联系留言表
+-- ============================================================
+CREATE TABLE contact_messages (
+    id              BIGINT PRIMARY KEY AUTO_INCREMENT COMMENT '留言ID',
+    name            VARCHAR(100) NOT NULL COMMENT '联系人姓名',
+    email           VARCHAR(100) NOT NULL COMMENT '联系人邮箱',
+    subject         VARCHAR(200) NOT NULL COMMENT '留言主题',
+    content         TEXT NOT NULL COMMENT '留言内容',
+    is_read         BOOLEAN DEFAULT FALSE COMMENT '是否已读',
+    is_replied      BOOLEAN DEFAULT FALSE COMMENT '是否已回复',
+    replied_at      DATETIME COMMENT '回复时间',
+    created_at      DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+    INDEX idx_is_read (is_read),
+    INDEX idx_created_at (created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='联系留言表';
+
+-- ============================================================
+-- 21. 初始化症状分类数据
 -- ============================================================
 INSERT INTO symptom_categories (name, code, description, sort_order) VALUES
 ('呼吸系统', 'RESPIRATORY', '呼吸系统相关症状', 1),
@@ -489,7 +527,7 @@ INSERT INTO symptom_categories (name, code, description, sort_order) VALUES
 ('泌尿系统', 'URINARY', '泌尿系统相关症状', 8);
 
 -- ============================================================
--- 20. 初始化管理员账号 (密码: admin123)
+-- 22. 初始化管理员账号 (密码: admin123)
 -- ============================================================
 INSERT INTO users (username, email, password, role, real_name, is_verified)
 VALUES ('admin', 'admin@vitaai.com', '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'ADMIN', '系统管理员', TRUE);

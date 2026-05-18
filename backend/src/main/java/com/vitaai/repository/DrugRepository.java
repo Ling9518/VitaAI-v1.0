@@ -26,4 +26,6 @@ public interface DrugRepository extends JpaRepository<Drug, Long> {
     List<Drug> findTopByViews(Pageable pageable);
 
     List<Drug> findByCreatedById(Long userId);
+
+    Page<Drug> findByDrugTypeAndStatus(Drug.DrugType drugType, Drug.Status status, Pageable pageable);
 }

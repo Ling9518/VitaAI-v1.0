@@ -1,17 +1,32 @@
 package com.vitaai.ai;
 
 import com.vitaai.entity.Skill;
+import com.vitaai.entity.User;
 import com.vitaai.repository.SkillRepository;
+import com.vitaai.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import java.io.IOException;
+import java.nio.file.*;
+import java.time.LocalDateTime;
+import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 public class MedicalSkillService {
 
     private final SkillRepository skillRepository;
+    private final UserRepository userRepository;
+
+    @Value("${vita-skills.path:../Vita-skills}")
+    private String vitaSkillsPath;
 
     private static final String MEDICAL_SYSTEM_PROMPT = """
         【角色定义】
@@ -63,10 +78,174 @@ public class MedicalSkillService {
         4. 结构化呈现诊断信息，便于理解
         """;
 
+    // ---- Skill query ----
+
+    public List<Skill> getActiveSkills() {
+        return skillRepository.findByIsActiveTrue();
+    }
+
+    public Page<Skill> getAllSkills(int page, int size) {
+        return skillRepository.findAll(PageRequest.of(page - 1, size));
+    }
+
+    public Skill getSkill(Long id) {
+        return skillRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("技能不存在"));
+    }
+
+    // ---- CRUD ----
+
+    @Transactional
+    public Skill createSkill(Skill skill, Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new RuntimeException("用户不存在"));
+        skill.setCreatedBy(user);
+        skill.setStatus(Skill.Status.APPROVED);
+        skill.setPublishedAt(LocalDateTime.now());
+        return skillRepository.save(skill);
+    }
+
+    @Transactional
+    public Skill updateSkill(Long id, Skill updates) {
+        Skill existing = getSkill(id);
+        if (updates.getName() != null) existing.setName(updates.getName());
+        if (updates.getDescription() != null) existing.setDescription(updates.getDescription());
+        if (updates.getContent() != null) existing.setContent(updates.getContent());
+        if (updates.getCategory() != null) existing.setCategory(updates.getCategory());
+        if (updates.getKeywords() != null) existing.setKeywords(updates.getKeywords());
+        if (updates.getIsActive() != null) existing.setIsActive(updates.getIsActive());
+        if (updates.getPriority() != null) existing.setPriority(updates.getPriority());
+        return skillRepository.save(existing);
+    }
+
+    @Transactional
+    public void deleteSkill(Long id) {
+        skillRepository.deleteById(id);
+    }
+
+    // ---- Vita-skills file operations ----
+
+    /**
+     * Upload a SKILL.md file to the Vita-skills directory.
+     * Saves content as Vita-skills/{name}/SKILL.md
+     */
+    public void uploadSkillFile(String name, String content) throws IOException {
+        Path dir = Paths.get(vitaSkillsPath, name);
+        Files.createDirectories(dir);
+        Path file = dir.resolve("SKILL.md");
+        Files.writeString(file, content, StandardOpenOption.CREATE, StandardOpenOption.TRUNCATE_EXISTING);
+    }
+
+    /**
+     * Delete a skill directory from Vita-skills.
+     */
+    public void deleteSkillFile(String name) throws IOException {
+        Path dir = Paths.get(vitaSkillsPath, name);
+        if (Files.exists(dir)) {
+            try (var s = Files.walk(dir)) {
+                s.sorted(Comparator.reverseOrder()).forEach(p -> {
+                    try { Files.deleteIfExists(p); } catch (IOException ignored) {}
+                });
+            }
+        }
+    }
+
+    // ---- Sync: read Vita-skills files and upsert into DB ----
+
+    private static final Pattern FRONTMATTER = Pattern.compile(
+            "^---\\s*\\n(.*?)\\n---\\s*\\n(.*)", Pattern.DOTALL);
+    private static final Pattern YAML_KEY = Pattern.compile("^(\\w+):\\s*(.+)$", Pattern.MULTILINE);
+
+    /**
+     * Scan Vita-skills directory, parse every SKILL.md, and upsert into the database.
+     * Returns a summary of what was synced.
+     */
+    @Transactional
+    public Map<String, Object> syncFromVitaSkills() throws IOException {
+        Path root = Paths.get(vitaSkillsPath);
+        if (!Files.exists(root)) {
+            return Map.of("synced", 0, "message", "Vita-skills目录不存在: " + vitaSkillsPath);
+        }
+
+        List<String> synced = new ArrayList<>();
+        List<String> errors = new ArrayList<>();
+
+        try (var dirs = Files.list(root)) {
+            dirs.filter(Files::isDirectory).forEach(dir -> {
+                Path skillFile = dir.resolve("SKILL.md");
+                if (!Files.exists(skillFile)) return;
+                try {
+                    String raw = Files.readString(skillFile);
+                    String dirName = dir.getFileName().toString();
+
+                    // Parse YAML frontmatter
+                    Matcher fm = FRONTMATTER.matcher(raw);
+                    final String name;
+                    final String description;
+                    final String content;
+                    if (fm.matches()) {
+                        Map<String, String> fmMap = parseYamlMap(fm.group(1));
+                        name = fmMap.getOrDefault("name", dirName);
+                        description = fmMap.getOrDefault("description", "");
+                        content = fm.group(2).trim();
+                    } else {
+                        name = dirName;
+                        description = "";
+                        content = raw;
+                    }
+
+                    // Upsert: try find by name
+                    List<Skill> existing = skillRepository.findAll();
+                    Skill match = existing.stream()
+                            .filter(s -> s.getName() != null && s.getName().equalsIgnoreCase(name))
+                            .findFirst().orElse(null);
+
+                    if (match != null) {
+                        match.setDescription(description);
+                        match.setContent(content);
+                        match.setCategory(dirName);
+                        skillRepository.save(match);
+                    } else {
+                        Skill s = Skill.builder()
+                                .name(name)
+                                .description(description)
+                                .content(content)
+                                .category(dirName)
+                                .isActive(true)
+                                .status(Skill.Status.APPROVED)
+                                .publishedAt(LocalDateTime.now())
+                                .build();
+                        skillRepository.save(s);
+                    }
+                    synced.add(name);
+                } catch (IOException e) {
+                    errors.add(dir.getFileName() + ": " + e.getMessage());
+                }
+            });
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("synced", synced.size());
+        result.put("names", synced);
+        result.put("errors", errors);
+        return result;
+    }
+
+    private Map<String, String> parseYamlMap(String yaml) {
+        Map<String, String> map = new LinkedHashMap<>();
+        Matcher m = YAML_KEY.matcher(yaml);
+        while (m.find()) {
+            map.put(m.group(1).trim(), m.group(2).trim());
+        }
+        return map;
+    }
+
+    // ---- System prompt ----
+
     public String getSystemPrompt() {
         StringBuilder sb = new StringBuilder(MEDICAL_SYSTEM_PROMPT);
 
-        List<Skill> activeSkills = skillRepository.findByIsActiveTrue();
+        List<Skill> activeSkills = getActiveSkills();
         if (!activeSkills.isEmpty()) {
             sb.append("\n\n【动态加载的专业技能】\n");
             for (Skill skill : activeSkills) {
