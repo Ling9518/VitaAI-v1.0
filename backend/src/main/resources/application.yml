@@ -1,16 +1,11 @@
-# Jasypt 加密主密码（唯一需要设置的环境变量）
-jasypt:
-  encryptor:
-    password: ${JASYPT_ENCRYPTOR_PASSWORD}
-
 spring:
   application:
     name: vitaai
 
   datasource:
     url: jdbc:mysql://localhost:3306/smart_hospital?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-    username: root
-    password: ENC(REDACTED_DB)
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       minimum-idle: 5
@@ -30,8 +25,8 @@ spring:
 
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${SPRING_REDIS_HOST:localhost}
+      port: ${SPRING_REDIS_PORT:6379}
       timeout: 5000ms
       lettuce:
         pool:
@@ -40,14 +35,14 @@ spring:
           min-idle: 5
 
   mail:
-    host: smtp.qq.com
-    port: 587
-    username: ENC(REDACTED_MAIL_USER)
-    password: ENC(REDACTED_MAIL_PW)
+    host: ${MAIL_HOST:smtp.qq.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
     properties:
       mail.smtp.auth: true
       mail.smtp.starttls.enable: true
-      mail.smtp.ssl.trust: smtp.qq.com
+      mail.smtp.ssl.trust: ${MAIL_HOST:smtp.qq.com}
 
   servlet:
     multipart:
@@ -64,15 +59,15 @@ server:
 
 # JWT配置
 jwt:
-  secret: ENC(REDACTED_JWT)
+  secret: ${JWT_SECRET}
   expiration: 7200000
   refresh-expiration: 604800000
 
 # AI服务配置 (DeepSeek via Spark proxy)
 ai:
-  api-key: ENC(REDACTED_AI_KEY)
-  base-url: https://maas-coding-api.cn-huabei-1.xf-yun.com/v2
-  model: astron-code-latest
+  api-key: ${AI_API_KEY}
+  base-url: ${AI_BASE_URL:https://maas-coding-api.cn-huabei-1.xf-yun.com/v2}
+  model: ${AI_MODEL:astron-code-latest}
   temperature: 0.7
   max-tokens: 2000
 
