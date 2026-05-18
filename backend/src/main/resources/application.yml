@@ -1,16 +1,11 @@
-# Jasypt 加密主密码（唯一需要设置的环境变量）
-jasypt:
-  encryptor:
-    password: ${JASYPT_ENCRYPTOR_PASSWORD}
-
 spring:
   application:
     name: vitaai
 
   datasource:
     url: jdbc:mysql://localhost:3306/smart_hospital?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
-    username: root
-    password: ENC(CjFIa7Ft7llXVOogt6PAm4YUge0QIrPmDkINW98TvElNZa7n9SzB19aGW6X8hTC2)
+    username: ${SPRING_DATASOURCE_USERNAME:root}
+    password: ${SPRING_DATASOURCE_PASSWORD}
     driver-class-name: com.mysql.cj.jdbc.Driver
     hikari:
       minimum-idle: 5
@@ -30,8 +25,8 @@ spring:
 
   data:
     redis:
-      host: localhost
-      port: 6379
+      host: ${SPRING_REDIS_HOST:localhost}
+      port: ${SPRING_REDIS_PORT:6379}
       timeout: 5000ms
       lettuce:
         pool:
@@ -40,14 +35,14 @@ spring:
           min-idle: 5
 
   mail:
-    host: smtp.qq.com
-    port: 587
-    username: ENC(dAX45dQ5w75m4ahwYX9vDJWE1596F1j0bQDqSu9ExXzHYSCNQDLQJntABYE6c/5S)
-    password: ENC(G9aRgrod3z23EzLUmyd3POvzwyqHCZIrPV/rE2V6DquoqEA595sRpRO76QhD9tgZ)
+    host: ${MAIL_HOST:smtp.qq.com}
+    port: ${MAIL_PORT:587}
+    username: ${MAIL_USERNAME}
+    password: ${MAIL_PASSWORD}
     properties:
       mail.smtp.auth: true
       mail.smtp.starttls.enable: true
-      mail.smtp.ssl.trust: smtp.qq.com
+      mail.smtp.ssl.trust: ${MAIL_HOST:smtp.qq.com}
 
   servlet:
     multipart:
@@ -64,15 +59,15 @@ server:
 
 # JWT配置
 jwt:
-  secret: ENC(7+PWP612Ye52SP9aNtyIkGdXBG3rGelvxgiwmj/wa+Nx+ggyvsstQDm+RwCT6EtWNR3y6tJl/ru0YnOnCHQSwxQYyUInJ6YwqIP5naGDYSY=)
+  secret: ${JWT_SECRET}
   expiration: 7200000
   refresh-expiration: 604800000
 
 # AI服务配置 (DeepSeek via Spark proxy)
 ai:
-  api-key: ENC(y3p2wZ9X0MPmdVqpWbEqB70Ri5ZhVYemhVDQip/FssNHkfARDNUBf7zJ7pVnZppmM84K4x/A7/PSsUUCuakDoGoDnTwK5yT9Is2KwmvcG1MCJXtjExblpoH6XK8Q1pRkDoYkJ9tlV3w7e09oaHHedA==)
-  base-url: https://maas-coding-api.cn-huabei-1.xf-yun.com/v2
-  model: astron-code-latest
+  api-key: ${AI_API_KEY}
+  base-url: ${AI_BASE_URL:https://maas-coding-api.cn-huabei-1.xf-yun.com/v2}
+  model: ${AI_MODEL:astron-code-latest}
   temperature: 0.7
   max-tokens: 2000
 
