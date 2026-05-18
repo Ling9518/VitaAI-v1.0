@@ -27,6 +27,9 @@ public class DrugService {
         if (keyword != null && !keyword.isEmpty()) {
             return drugRepository.search(keyword, pageable);
         }
+        if (drugType != null && !drugType.isEmpty()) {
+            return drugRepository.findByDrugTypeAndStatus(Drug.DrugType.valueOf(drugType), Drug.Status.APPROVED, pageable);
+        }
         return drugRepository.findAllApproved(pageable);
     }
 

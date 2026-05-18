@@ -6,7 +6,7 @@
         <h1>个人<span class="gradient-text">资料</span></h1>
       </div>
 
-      <div class="profile-grid">
+      <div class="profile-grid" v-if="profile">
         <div class="card profile-card">
           <div class="avatar-section">
             <el-avatar :size="80" icon="UserFilled" />
@@ -61,6 +61,7 @@
           </el-form>
         </div>
       </div>
+      <div v-if="loading" class="loading-state"><el-icon class="is-loading"><Loading /></el-icon> 加载中...</div>
     </div>
     <footer class="app-footer"><p>&copy; 2026 VitaAI 智慧医院系统. All rights reserved.</p></footer>
   </div>
@@ -73,10 +74,14 @@ import AppHeader from '@/components/layout/AppHeader.vue'
 import { useUserStore } from '@/stores/user'
 import api from '@/api/index'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Loading } from '@element-plus/icons-vue'
+import type { UserInfo } from '@/types'
+import { formatDate } from '@/utils'
 
 const router = useRouter()
 const userStore = useUserStore()
-const profile = ref<any>({})
+const profile = ref<UserInfo | null>(null)
+const loading = ref(false)
 const saving = ref(false)
 const changingPwd = ref(false)
 const deleting = ref(false)
@@ -86,18 +91,19 @@ const roleMap: Record<string, string> = { ADMIN: '管理员', DOCTOR: '医生', 
 const editForm = reactive({ realName: '', email: '', gender: '' })
 const pwdForm = reactive({ oldPassword: '', newPassword: '', confirmPassword: '' })
 
-function formatDate(date: string) {
-  return date ? new Date(date).toLocaleDateString('zh-CN') : ''
-}
-
 onMounted(async () => {
+  loading.value = true
   try {
     const res = await api.get('/users/profile')
     profile.value = res.data.data
-    editForm.realName = profile.value.realName || ''
-    editForm.email = profile.value.email || ''
-    editForm.gender = profile.value.gender || ''
-  } catch { /* empty */ }
+    editForm.realName = profile.value?.realName || ''
+    editForm.email = profile.value?.email || ''
+    editForm.gender = profile.value?.gender || ''
+  } catch {
+    ElMessage.error('加载个人资料失败')
+  } finally {
+    loading.value = false
+  }
 })
 
 async function handleUpdateProfile() {
@@ -106,7 +112,9 @@ async function handleUpdateProfile() {
     await api.put('/users/profile', { ...editForm })
     ElMessage.success('资料更新成功')
     await userStore.fetchProfile()
-  } catch { /* handled by interceptor */ }
+  } catch {
+    ElMessage.error('保存失败，请重试')
+  }
   finally { saving.value = false }
 }
 
@@ -126,7 +134,9 @@ async function handleChangePwd() {
     pwdForm.oldPassword = ''
     pwdForm.newPassword = ''
     pwdForm.confirmPassword = ''
-  } catch { /* handled by interceptor */ }
+  } catch {
+    ElMessage.error('密码修改失败')
+  }
   finally { changingPwd.value = false }
 }
 
@@ -145,39 +155,43 @@ async function handleDeleteAccount() {
     await api.delete('/users/account')
     ElMessage.success('账号已注销')
     userStore.logout()
-    router.push('/login')
-  } catch { /* handled by interceptor */ }
+    router.push('/')
+  } catch {
+    ElMessage.error('注销失败，请稍后重试')
+  }
   finally { deleting.value = false }
 }
 </script>
 
 <style scoped>
 .profile-page { min-height: 100vh; display: flex; flex-direction: column; }
-.page-hero { text-align: center; margin-bottom: 40px; }
-.page-hero h1 { font-size: 36px; font-weight: 800; }
+.page-hero { text-align: center; margin-bottom: 44px; }
+.page-hero h1 { font-size: 38px; font-weight: 800; letter-spacing: -0.5px; }
 
 .profile-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
 
-.profile-card { text-align: center; padding: 32px; }
-.avatar-section { margin-bottom: 24px; }
-.avatar-section h3 { font-size: 20px; font-weight: 700; margin: 12px 0 8px; }
-.role-tag { display: inline-block; padding: 4px 14px; border-radius: 50px; font-size: 13px; font-weight: 600; }
+.profile-card { text-align: center; padding: 36px; border: 1px solid var(--border); }
+.avatar-section { margin-bottom: 28px; }
+.avatar-section :deep(.el-avatar) { box-shadow: var(--shadow-lg); }
+.avatar-section h3 { font-size: 22px; font-weight: 700; margin: 14px 0 8px; }
+.role-tag { display: inline-block; padding: 5px 16px; border-radius: 50px; font-size: 13px; font-weight: 600; }
 .role-tag.user { background: #dbeafe; color: var(--primary); }
 .role-tag.doctor { background: #d1fae5; color: #065f46; }
 .role-tag.admin { background: #ede9fe; color: #6b21a8; }
 .role-tag.visitor { background: #f1f5f9; color: var(--text-secondary); }
 
-.info-list { text-align: left; display: flex; flex-direction: column; gap: 12px; }
-.info-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border); }
-.info-item .label { color: var(--text-light); font-size: 13px; }
+.info-list { text-align: left; display: flex; flex-direction: column; gap: 14px; }
+.info-item { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid var(--border); transition: all .15s ease; }
+.info-item:hover { padding-left: 4px; padding-right: 4px; }
+.info-item .label { color: var(--text-light); font-size: 13px; font-weight: 500; }
 
-.form-card { padding: 28px 32px; }
-.btn-delete-account { width: 100%; margin-top: 20px; padding: 10px; background: #fee2e2; color: #991b1b; border: 1px solid #fecaca; border-radius: 8px; cursor: pointer; font-size: 14px; font-weight: 600; }
-.btn-delete-account:hover { background: #fecaca; }
+.form-card { padding: 32px 36px; border: 1px solid var(--border); }
+.btn-delete-account { width: 100%; margin-top: 24px; padding: 12px; background: linear-gradient(135deg, #fef2f2, #fee2e2); color: #991b1b; border: 1px solid #fecaca; border-radius: 10px; cursor: pointer; font-size: 14px; font-weight: 600; transition: all .25s ease; }
+.btn-delete-account:hover { background: #fecaca; box-shadow: 0 2px 8px rgba(239,68,68,.1); }
 .btn-delete-account:disabled { opacity: 0.6; cursor: not-allowed; }
-.delete-hint { margin-top: 8px; font-size: 12px; color: #999; }
-.form-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 20px; }
-.app-footer { text-align: center; padding: 32px; color: var(--text-light); font-size: 14px; border-top: 1px solid var(--border); margin-top: auto; }
+.delete-hint { margin-top: 10px; font-size: 12px; color: #999; }
+.form-card h3 { font-size: 18px; font-weight: 700; margin-bottom: 24px; padding-bottom: 12px; border-bottom: 2px solid var(--primary); display: inline-block; }
+.app-footer { text-align: center; padding: 36px; color: var(--text-light); font-size: 14px; border-top: 1px solid var(--border); margin-top: auto; }
 
 @media (max-width: 768px) {
   .profile-grid { grid-template-columns: 1fr; }

@@ -3,6 +3,10 @@ package com.vitaai.controller;
 import com.vitaai.dto.ApiResponse;
 import com.vitaai.dto.PageResponse;
 import com.vitaai.entity.Disease;
+import com.vitaai.entity.DiseaseDrugRel;
+import com.vitaai.entity.Drug;
+import com.vitaai.repository.DiseaseDrugRelRepository;
+import com.vitaai.repository.DrugRepository;
 import com.vitaai.service.DiseaseService;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
@@ -10,6 +14,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/diseases")
@@ -17,6 +22,8 @@ import java.util.List;
 public class DiseaseController {
 
     private final DiseaseService diseaseService;
+    private final DiseaseDrugRelRepository diseaseDrugRelRepository;
+    private final DrugRepository drugRepository;
 
     @GetMapping
     public ApiResponse<PageResponse<Disease>> list(
@@ -54,5 +61,13 @@ public class DiseaseController {
     @GetMapping("/top")
     public ApiResponse<List<Disease>> top(@RequestParam(defaultValue = "10") int limit) {
         return ApiResponse.success(diseaseService.getTopDiseases(limit));
+    }
+
+    @GetMapping("/{id}/drugs")
+    public ApiResponse<List<Drug>> getDiseaseDrugs(@PathVariable Long id) {
+        List<DiseaseDrugRel> rels = diseaseDrugRelRepository.findByDiseaseId(id);
+        List<Long> drugIds = rels.stream().map(DiseaseDrugRel::getDrugId).collect(Collectors.toList());
+        List<Drug> drugs = drugRepository.findAllById(drugIds);
+        return ApiResponse.success(drugs);
     }
 }

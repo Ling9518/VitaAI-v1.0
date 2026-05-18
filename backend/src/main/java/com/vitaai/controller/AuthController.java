@@ -38,4 +38,31 @@ public class AuthController {
                 request.getOrDefault("type", "REGISTER"));
         return ApiResponse.success("验证码已发送", null);
     }
+
+    @PostMapping("/logout")
+    public ApiResponse<Void> logout() {
+        return ApiResponse.success("已退出登录", null);
+    }
+
+    @PostMapping("/verify-email")
+    public ApiResponse<Void> verifyEmail(@RequestBody Map<String, String> request) {
+        authService.verifyEmail(request.get("email"), request.get("code"));
+        return ApiResponse.success("邮箱验证成功", null);
+    }
+
+    @PostMapping("/password/forgot")
+    public ApiResponse<Void> forgotPassword(@RequestBody Map<String, String> request) {
+        authService.sendVerificationCode(request.get("email"), "RESET");
+        return ApiResponse.success("验证码已发送", null);
+    }
+
+    @PostMapping("/password/reset")
+    public ApiResponse<Void> resetPassword(@RequestBody Map<String, String> request) {
+        authService.resetPassword(
+                request.get("email"),
+                request.get("code"),
+                request.get("newPassword"),
+                request.get("confirmPassword"));
+        return ApiResponse.success("密码重置成功", null);
+    }
 }

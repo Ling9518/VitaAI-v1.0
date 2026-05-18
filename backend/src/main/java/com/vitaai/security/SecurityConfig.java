@@ -42,6 +42,7 @@ public class SecurityConfig {
                 .requestMatchers("/api/system/health").permitAll()
                 .requestMatchers("/api/system/hot-searches").permitAll()
                 .requestMatchers("/api/system/dicts/**").permitAll()
+                .requestMatchers(HttpMethod.POST, "/api/contact-messages").permitAll()
                 // Admin only
                 .requestMatchers("/api/admin/**").hasRole("ADMIN")
                 .requestMatchers("/api/reviews/**").hasAnyRole("ADMIN", "DOCTOR")
@@ -59,7 +60,10 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration config = new CorsConfiguration();
-        config.setAllowedOriginPatterns(List.of("*"));
+        config.setAllowedOriginPatterns(List.of(
+            "http://localhost:[*]",
+            "http://127.0.0.1:[*]"
+        ));
         config.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);

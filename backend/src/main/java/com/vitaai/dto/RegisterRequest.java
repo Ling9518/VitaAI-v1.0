@@ -26,6 +26,10 @@ public class RegisterRequest {
 
     private String doctorLicense;
 
+    private String doctorDept;
+
+    private String doctorTitle;
+
     @NotBlank(message = "验证码不能为空")
     private String captchaCode;
 }

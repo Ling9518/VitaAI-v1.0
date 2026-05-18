@@ -5,6 +5,7 @@ import com.vitaai.entity.HealthRecord;
 import com.vitaai.entity.User;
 import com.vitaai.repository.AiConversationRepository;
 import com.vitaai.repository.DiagnosisRecordRepository;
+import com.vitaai.repository.FavoriteRepository;
 import com.vitaai.repository.HealthRecordRepository;
 import com.vitaai.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +24,7 @@ public class UserService {
     private final HealthRecordRepository healthRecordRepository;
     private final DiagnosisRecordRepository diagnosisRecordRepository;
     private final AiConversationRepository aiConversationRepository;
+    private final FavoriteRepository favoriteRepository;
     private final PasswordEncoder passwordEncoder;
 
     public Map<String, Object> getProfile(Long userId) {
@@ -65,6 +67,9 @@ public class UserService {
 
     @Transactional
     public void deleteAccount(Long userId) {
+        // Delete favorites
+        favoriteRepository.deleteByUserId(userId);
+
         // Delete health record
         healthRecordRepository.findByUserId(userId).ifPresent(hr -> {
             healthRecordRepository.delete(hr);
@@ -102,14 +107,15 @@ public class UserService {
                 .bloodType(HealthRecord.BloodType.valueOf((String) data.getOrDefault("bloodType", "UNKNOWN")))
                 .height(new BigDecimal(data.getOrDefault("height", "0").toString()))
                 .weight(new BigDecimal(data.getOrDefault("weight", "0").toString()))
-                .medicalHistory((String) data.getOrDefault("medicalHistory", "[]"))
-                .allergyHistory((String) data.getOrDefault("allergyHistory", "[]"))
-                .medicationRecords((String) data.getOrDefault("medicationRecords", "[]"))
-                .familyHistory((String) data.getOrDefault("familyHistory", "[]"))
-                .lifestyle((String) data.getOrDefault("lifestyle", "{}"))
-                .isComplete(true)
-                .completenessRate(new BigDecimal("80"))
+                .medicalHistory((String) data.getOrDefault("medicalHistory", ""))
+                .allergyHistory((String) data.getOrDefault("allergyHistory", ""))
+                .medicationRecords((String) data.getOrDefault("medicationRecords", ""))
+                .familyHistory((String) data.getOrDefault("familyHistory", ""))
+                .surgeryHistory((String) data.getOrDefault("surgeryHistory", ""))
+                .lifestyle((String) data.getOrDefault("lifestyle", ""))
+                .lastCheckupDate(parseDate(data.get("lastCheckupDate")))
                 .build();
+        recalculateCompleteness(hr);
         healthRecordRepository.save(hr);
         return buildHealthRecordMap(hr);
     }
@@ -126,8 +132,11 @@ public class UserService {
         if (data.containsKey("allergyHistory")) hr.setAllergyHistory((String) data.get("allergyHistory"));
         if (data.containsKey("medicationRecords")) hr.setMedicationRecords((String) data.get("medicationRecords"));
         if (data.containsKey("familyHistory")) hr.setFamilyHistory((String) data.get("familyHistory"));
+        if (data.containsKey("surgeryHistory")) hr.setSurgeryHistory((String) data.get("surgeryHistory"));
         if (data.containsKey("lifestyle")) hr.setLifestyle((String) data.get("lifestyle"));
+        if (data.containsKey("lastCheckupDate")) hr.setLastCheckupDate(parseDate(data.get("lastCheckupDate")));
 
+        recalculateCompleteness(hr);
         healthRecordRepository.save(hr);
         return buildHealthRecordMap(hr);
     }
@@ -150,6 +159,38 @@ public class UserService {
         profile.put("lastLoginAt", user.getLastLoginAt());
         profile.put("createdAt", user.getCreatedAt());
         return profile;
+    }
+
+    private void recalculateCompleteness(HealthRecord hr) {
+        int total = 10;
+        int filled = 0;
+
+        if (hr.getBloodType() != null && hr.getBloodType() != HealthRecord.BloodType.UNKNOWN) filled++;
+        if (hr.getHeight() != null && hr.getHeight().compareTo(BigDecimal.ZERO) > 0) filled++;
+        if (hr.getWeight() != null && hr.getWeight().compareTo(BigDecimal.ZERO) > 0) filled++;
+        if (hr.getLastCheckupDate() != null) filled++;
+        if (!isEmptyField(hr.getMedicalHistory())) filled++;
+        if (!isEmptyField(hr.getAllergyHistory())) filled++;
+        if (!isEmptyField(hr.getMedicationRecords())) filled++;
+        if (!isEmptyField(hr.getFamilyHistory())) filled++;
+        if (!isEmptyField(hr.getSurgeryHistory())) filled++;
+        if (!isEmptyField(hr.getLifestyle())) filled++;
+
+        BigDecimal rate = new BigDecimal(filled * 100 / total);
+        hr.setCompletenessRate(rate);
+        hr.setIsComplete(filled == total);
+    }
+
+    private boolean isEmptyField(String value) {
+        return value == null || value.isBlank() || "[]".equals(value.trim()) || "{}".equals(value.trim());
+    }
+
+    private java.time.LocalDate parseDate(Object value) {
+        if (value == null) return null;
+        if (value instanceof java.time.LocalDate d) return d;
+        String s = value.toString().trim();
+        if (s.isEmpty()) return null;
+        return java.time.LocalDate.parse(s);
     }
 
     private Map<String, Object> buildHealthRecordMap(HealthRecord hr) {
