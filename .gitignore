@@ -63,6 +63,14 @@ docker/elasticsearch/data/
 uploads/
 storage/
 
+# Python
+__pycache__/
+*.pyc
+*.pyo
+
 # Claude
 .claude/
 CLAUDE.md
+
+# Playwright MCP
+.playwright-mcp/

@@ -80,7 +80,7 @@
                 <span class="info-icon">📧</span>
                 <div>
                   <div class="info-label">邮箱</div>
-                  <div class="info-value">ROTATED_EMAIL</div>
+                  <div class="info-value">3676392400@qq.com</div>
                 </div>
               </div>
               <div class="info-item">

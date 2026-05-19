@@ -74,10 +74,14 @@ public class MessageController {
         User user = getCurrentUser(request);
         Message msg = messageRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("留言不存在"));
-        if (!msg.getUser().getId().equals(user.getId()))
+
+        // 用户只能编辑自己的留言，管理员可以编辑任何留言
+        boolean isOwner = msg.getUser().getId().equals(user.getId());
+        boolean isAdmin = user.getRole() == User.Role.ADMIN;
+        if (!isOwner && !isAdmin) {
             throw new RuntimeException("只能编辑自己的留言");
-        if (msg.getStatus() == Message.Status.RESOLVED)
-            throw new RuntimeException("已解决的留言不可编辑");
+        }
+
         msg.setContent(body.get("content"));
         msg.setUpdatedAt(LocalDateTime.now());
         messageRepository.save(msg);
@@ -90,8 +94,14 @@ public class MessageController {
         User user = getCurrentUser(request);
         Message msg = messageRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("留言不存在"));
-        if (!msg.getUser().getId().equals(user.getId()))
+
+        // 用户只能删除自己的留言，管理员可以删除任何留言
+        boolean isOwner = msg.getUser().getId().equals(user.getId());
+        boolean isAdmin = user.getRole() == User.Role.ADMIN;
+        if (!isOwner && !isAdmin) {
             throw new RuntimeException("只能删除自己的留言");
+        }
+
         messageRepository.delete(msg);
         return ApiResponse.success(Map.of("message", "留言已删除"));
     }
@@ -103,10 +113,20 @@ public class MessageController {
         User user = getCurrentUser(request);
         if (user.getRole() != User.Role.ADMIN && user.getRole() != User.Role.DOCTOR)
             throw new RuntimeException("无权限");
+
         Message msg = messageRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("留言不存在"));
+
+        // 如果已有回复，医生只能编辑自己的回复，管理员可以编辑任何回复
+        if (msg.getReply() != null && user.getRole() == User.Role.DOCTOR) {
+            if (msg.getRepliedBy() == null || !msg.getRepliedBy().getId().equals(user.getId())) {
+                throw new RuntimeException("只能编辑自己的回复");
+            }
+        }
+
         boolean isFirstReply = msg.getReply() == null;
         msg.setReply(body.get("reply"));
+        msg.setRepliedBy(user);
         if (isFirstReply) {
             msg.setRepliedAt(LocalDateTime.now());
         }
@@ -120,9 +140,19 @@ public class MessageController {
         User user = getCurrentUser(request);
         if (user.getRole() != User.Role.ADMIN && user.getRole() != User.Role.DOCTOR)
             throw new RuntimeException("无权限");
+
         Message msg = messageRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("留言不存在"));
+
+        // 医生只能撤回自己的回复，管理员可以撤回任何回复
+        if (user.getRole() == User.Role.DOCTOR) {
+            if (msg.getRepliedBy() == null || !msg.getRepliedBy().getId().equals(user.getId())) {
+                throw new RuntimeException("只能撤回自己的回复");
+            }
+        }
+
         msg.setReply(null);
+        msg.setRepliedBy(null);
         msg.setRepliedAt(null);
         msg.setStatus(Message.Status.UNRESOLVED);
         messageRepository.save(msg);
@@ -145,6 +175,7 @@ public class MessageController {
         if (body.containsKey("reply")) {
             boolean isFirstReply = msg.getReply() == null;
             msg.setReply(body.get("reply"));
+            msg.setRepliedBy(user);
             if (isFirstReply) {
                 msg.setRepliedAt(LocalDateTime.now());
             }
@@ -159,8 +190,17 @@ public class MessageController {
         User user = getCurrentUser(request);
         if (user.getRole() != User.Role.ADMIN && user.getRole() != User.Role.DOCTOR)
             throw new RuntimeException("无权限");
+
         Message msg = messageRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("留言不存在"));
+
+        // 医生只能切换自己回复的留言状态，管理员可以切换任何留言状态
+        if (user.getRole() == User.Role.DOCTOR) {
+            if (msg.getRepliedBy() == null || !msg.getRepliedBy().getId().equals(user.getId())) {
+                throw new RuntimeException("只能变更自己回复过的留言状态");
+            }
+        }
+
         msg.setStatus(msg.getStatus() == Message.Status.UNRESOLVED ? Message.Status.RESOLVED : Message.Status.UNRESOLVED);
         messageRepository.save(msg);
         return ApiResponse.success(Map.of("message", "状态已更新"));
@@ -188,6 +228,12 @@ public class MessageController {
             userInfo.put("id", m.getUser().getId());
             userInfo.put("username", m.getUser().getUsername());
             map.put("user", userInfo);
+            if (m.getRepliedBy() != null) {
+                Map<String, Object> replierInfo = new LinkedHashMap<>();
+                replierInfo.put("id", m.getRepliedBy().getId());
+                replierInfo.put("username", m.getRepliedBy().getUsername());
+                map.put("repliedBy", replierInfo);
+            }
             return map;
         }).toList();
         return Map.of(

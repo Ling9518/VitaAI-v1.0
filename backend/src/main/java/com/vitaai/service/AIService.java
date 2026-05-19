@@ -13,6 +13,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +27,9 @@ import java.util.*;
 @Service
 @RequiredArgsConstructor
 public class AIService {
+
+    @Value("${ai.model}")
+    private String aiModel;
 
     private final DeepSeekClient deepSeekClient;
     private final MedicalSkillService medicalSkillService;
@@ -90,7 +94,7 @@ public class AIService {
                 .user(user)
                 .senderType(AiConversation.SenderType.AI)
                 .content(aiResponse)
-                .aiModelUsed("astron-code-latest")
+                .aiModelUsed(aiModel)
                 .latencyMs(latency)
                 .build();
         conversationRepository.save(aiMsg);
@@ -107,7 +111,7 @@ public class AIService {
         result.put("messageId", aiMsg.getId());
         result.put("senderType", "AI");
         result.put("content", aiResponse);
-        result.put("aiModel", "astron-code-latest");
+        result.put("aiModel", aiModel);
         result.put("tokensUsed", aiMsg.getTokensUsed());
         result.put("createdAt", aiMsg.getCreatedAt().toString());
         result.put("isNewConversation", isNew);
@@ -142,7 +146,7 @@ public class AIService {
 
     public SseEmitter streamChat(Long userId, ChatRequest request) {
         SseEmitter emitter = new SseEmitter(300_000L); // 5 min timeout
-        new Thread(() -> {
+        Thread sseThread = new Thread(() -> {
             try {
                 // Send initial connected event immediately
                 Map<String, Object> connected = new HashMap<>();
@@ -158,7 +162,6 @@ public class AIService {
                 int len = content.length();
                 while (i < len) {
                     int end = Math.min(i + randomChunkSize(), len);
-                    // Don't break in the middle of a multi-byte char or markdown token
                     if (end < len && Character.isHighSurrogate(content.charAt(end - 1))) {
                         end++;
                     }
@@ -169,7 +172,7 @@ public class AIService {
                     event.put("conversationId", conversationId);
                     emitter.send(SseEmitter.event().name("message").data(event));
                     i = end;
-                    Thread.sleep(15 + (int)(Math.random() * 25)); // 15-40ms natural typing feel
+                    Thread.sleep(15 + (int)(Math.random() * 25)); // 15-40ms typing feel
                 }
 
                 Map<String, Object> done = new HashMap<>();
@@ -182,6 +185,7 @@ public class AIService {
                 emitter.completeWithError(e);
             }
         });
+        sseThread.start();
         return emitter;
     }
 

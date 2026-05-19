@@ -6,7 +6,7 @@ services:
     container_name: vitaai-mysql
     restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-ROTATED_MYSQL_PW}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?required}
       MYSQL_DATABASE: smart_hospital
       MYSQL_CHARSET: utf8mb4
       MYSQL_COLLATION: utf8mb4_unicode_ci
@@ -50,13 +50,13 @@ services:
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/smart_hospital?useUnicode=true&characterEncoding=UTF-8&serverTimezone=Asia/Shanghai&useSSL=false&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: root
-      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-ROTATED_MYSQL_PW}
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:?required}
       SPRING_REDIS_HOST: redis
       SPRING_REDIS_PORT: 6379
-      JWT_SECRET: ${JWT_SECRET:-ROTATED_JWT_SECRET}
-      AI_API_KEY: ${AI_API_KEY:-}
-      AI_BASE_URL: ${AI_BASE_URL:-https://maas-coding-api.cn-huabei-1.xf-yun.com/v2}
-      AI_MODEL: ${AI_MODEL:-astron-code-latest}
+      JWT_SECRET: ${JWT_SECRET:?required}
+      AI_API_KEY: ${AI_API_KEY:?required}
+      AI_BASE_URL: ${AI_BASE_URL:-https://api.deepseek.com/anthropic}
+      AI_MODEL: ${AI_MODEL:-deepseek-v4-flash}
       MAIL_HOST: ${MAIL_HOST:-smtp.qq.com}
       MAIL_PORT: ${MAIL_PORT:-587}
       MAIL_USERNAME: ${MAIL_USERNAME:-}

@@ -4,20 +4,17 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.*;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Consumer;
 
 @Slf4j
 @Service
-@RequiredArgsConstructor
 public class DeepSeekClient {
 
     @Value("${ai.api-key}")
@@ -35,8 +32,15 @@ public class DeepSeekClient {
     @Value("${ai.max-tokens:2000}")
     private int maxTokens;
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    public DeepSeekClient() {
+        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
+        factory.setConnectTimeout(10_000);   // 10s
+        factory.setReadTimeout(120_000);     // 120s for long medical responses
+        this.restTemplate = new RestTemplate(factory);
+    }
 
     public static class ChatMessage {
         public String role;
@@ -50,15 +54,25 @@ public class DeepSeekClient {
 
     public String chat(List<ChatMessage> messages) {
         try {
-            String url = baseUrl + "/chat/completions";
+            String url = baseUrl + "/v1/messages";
 
             ObjectNode requestBody = objectMapper.createObjectNode();
             requestBody.put("model", model);
-            requestBody.put("temperature", temperature);
             requestBody.put("max_tokens", maxTokens);
+            requestBody.put("temperature", temperature);
 
+            // Extract system message for top-level field
+            for (ChatMessage msg : messages) {
+                if ("system".equals(msg.role)) {
+                    requestBody.put("system", msg.content);
+                    break;
+                }
+            }
+
+            // Build messages array (user + assistant only)
             ArrayNode msgs = objectMapper.createArrayNode();
             for (ChatMessage msg : messages) {
+                if ("system".equals(msg.role)) continue;
                 ObjectNode m = objectMapper.createObjectNode();
                 m.put("role", msg.role);
                 m.put("content", msg.content);
@@ -68,14 +82,20 @@ public class DeepSeekClient {
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_JSON);
-            headers.set("Authorization", "Bearer " + apiKey);
+            headers.set("x-api-key", apiKey);
+            headers.set("anthropic-version", "2023-06-01");
 
             HttpEntity<String> entity = new HttpEntity<>(objectMapper.writeValueAsString(requestBody), headers);
 
             ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, entity, String.class);
 
             JsonNode json = objectMapper.readTree(response.getBody());
-            return json.path("choices").get(0).path("message").path("content").asText();
+            for (JsonNode block : json.path("content")) {
+                if ("text".equals(block.path("type").asText())) {
+                    return block.path("text").asText();
+                }
+            }
+            return "";
 
         } catch (Exception e) {
             log.error("AI API call failed", e);

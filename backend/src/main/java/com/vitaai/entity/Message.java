@@ -27,6 +27,10 @@ public class Message {
     @Column(length = 2000)
     private String reply;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "replied_by")
+    private User repliedBy;
+
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)

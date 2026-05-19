@@ -63,11 +63,11 @@ jwt:
   expiration: 7200000
   refresh-expiration: 604800000
 
-# AI服务配置 (DeepSeek via Spark proxy)
+# AI服务配置 (DeepSeek via Anthropic API)
 ai:
   api-key: ${AI_API_KEY}
-  base-url: ${AI_BASE_URL:https://maas-coding-api.cn-huabei-1.xf-yun.com/v2}
-  model: ${AI_MODEL:astron-code-latest}
+  base-url: ${AI_BASE_URL:https://api.deepseek.com/anthropic}
+  model: ${AI_MODEL:deepseek-v4-flash}
   temperature: 0.7
   max-tokens: 2000
 

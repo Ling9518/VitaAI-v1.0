@@ -64,7 +64,10 @@
               @keydown.enter.exact="handleSend"
               resize="none"
             />
-            <button class="btn-primary send-btn" :disabled="!inputText.trim() || thinking" @click="handleSend">
+            <button v-if="thinking" class="btn-stop" @click="stopStream" title="停止生成">
+              <span class="stop-icon">■</span>
+            </button>
+            <button v-else class="btn-primary send-btn" :disabled="!inputText.trim()" @click="handleSend">
               <el-icon><Promotion /></el-icon>
             </button>
           </div>
@@ -81,7 +84,10 @@
               @keydown.enter.exact="startChat"
               resize="none"
             />
-            <button class="btn-primary send-btn" :disabled="!inputText.trim() || thinking" @click="startChat">
+            <button v-if="thinking" class="btn-stop" @click="stopStream" title="停止生成">
+              <span class="stop-icon">■</span>
+            </button>
+            <button v-else class="btn-primary send-btn" :disabled="!inputText.trim()" @click="startChat">
               <el-icon><Promotion /></el-icon>
             </button>
           </div>
@@ -109,6 +115,7 @@ const inputText = ref('')
 const thinking = ref(false)
 const loadingStatus = ref('')
 const chatBox = ref<HTMLElement>()
+let abortController: AbortController | null = null
 
 const quickPrompts = [
   '我最近一直头痛，伴有恶心，是怎么回事？',
@@ -154,8 +161,8 @@ function startNewChat() {
 
 async function streamAI(body: Record<string, string>) {
   const token = localStorage.getItem('token')
-  const controller = new AbortController()
-  const timeoutId = setTimeout(() => controller.abort(), 300_000) // 5 min timeout
+  abortController = new AbortController()
+  const timeoutId = setTimeout(() => abortController!.abort(), 300_000) // 5 min timeout
 
   try {
     loadingStatus.value = '正在连接AI...'
@@ -166,7 +173,7 @@ async function streamAI(body: Record<string, string>) {
         'Authorization': token ? `Bearer ${token}` : '',
       },
       body: JSON.stringify(body),
-      signal: controller.signal,
+      signal: abortController.signal,
     })
 
     if (!response.ok) {
@@ -179,7 +186,6 @@ async function streamAI(body: Record<string, string>) {
 
     loadingStatus.value = 'AI正在思考...'
 
-    // Add placeholder message for streaming content
     const msgIndex = messages.value.length
     messages.value.push({ role: 'assistant', content: '', streaming: true })
 
@@ -194,12 +200,11 @@ async function streamAI(body: Record<string, string>) {
       for (const line of lines) {
         if (!line.trim()) continue
 
-        // Parse SSE: "event:message\ndata:{...}"
         let dataStr = ''
         if (line.startsWith('data:')) {
           dataStr = line.slice(5).trim()
         } else if (line.startsWith('event:')) {
-          continue // skip event line, data follows
+          continue
         } else {
           continue
         }
@@ -218,6 +223,8 @@ async function streamAI(body: Record<string, string>) {
             scrollToBottom()
           } else if (event.type === 'done') {
             messages.value[msgIndex].streaming = false
+            thinking.value = false
+            loadingStatus.value = ''
             fetchDiagnoses()
           }
         } catch {
@@ -227,18 +234,22 @@ async function streamAI(body: Record<string, string>) {
     }
   } catch (err: any) {
     if (err.name === 'AbortError') {
-      ElMessage.error('AI响应超时，请重试')
+      // User stopped - remove placeholder if empty
+      const last = messages.value[messages.value.length - 1]
+      if (last?.streaming && !last.content) {
+        messages.value.pop()
+      }
     } else {
       ElMessage.error('AI服务暂时不可用，请稍后再试')
-    }
-    // Remove placeholder on error
-    const last = messages.value[messages.value.length - 1]
-    if (last?.streaming && !last.content) {
-      messages.value.pop()
+      const last = messages.value[messages.value.length - 1]
+      if (last?.streaming && !last.content) {
+        messages.value.pop()
+      }
     }
     throw err
   } finally {
     clearTimeout(timeoutId)
+    abortController = null
     thinking.value = false
     loadingStatus.value = ''
     scrollToBottom()
@@ -263,6 +274,23 @@ async function handleSend() {
   thinking.value = true
   await scrollToBottom()
   streamAI({ message: text, conversationId: currentConversationId.value })
+}
+
+function stopStream() {
+  if (abortController) {
+    abortController.abort()
+    abortController = null
+  }
+  thinking.value = false
+  loadingStatus.value = ''
+  const last = messages.value[messages.value.length - 1]
+  if (last?.streaming) {
+    if (last.content) {
+      last.streaming = false // keep partial content
+    } else {
+      messages.value.pop() // remove empty placeholder
+    }
+  }
 }
 
 function sendQuickPrompt(prompt: string) {
@@ -392,6 +420,17 @@ onMounted(() => {
   flex-shrink: 0; padding: 0; transition: all .2s ease;
 }
 .send-btn:hover { transform: scale(1.05); }
+.btn-stop {
+  width: 48px; height: 48px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; padding: 0; border: none; background: #ef4444; cursor: pointer;
+  transition: all .2s ease; animation: pulse-stop 1.5s infinite;
+}
+.btn-stop:hover { background: #dc2626; transform: scale(1.08); }
+.btn-stop .stop-icon { color: #fff; font-size: 18px; line-height: 1; }
+@keyframes pulse-stop {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(239,68,68,.4); }
+  50% { box-shadow: 0 0 0 10px rgba(239,68,68,0); }
+}
 .chat-disclaimer { font-size: 12px; color: var(--text-light); text-align: center; margin-top: 12px; }
 
 @media (max-width: 768px) {

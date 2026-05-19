@@ -27,7 +27,7 @@
               </span>
               <span class="message-date">{{ formatDate(m.createdAt) }}</span>
             </div>
-            <div class="message-actions" v-if="m.status !== 'RESOLVED'">
+            <div class="message-actions" v-if="m.status !== 'RESOLVED' && (isAdmin || m.user?.id === currentUserId)">
               <el-button size="small" text @click="startEdit(m)">编辑</el-button>
               <el-button size="small" text type="danger" @click="handleDelete(m.id)">删除</el-button>
             </div>
@@ -65,6 +65,12 @@ import AppHeader from '@/components/layout/AppHeader.vue'
 import api from '@/api/index'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { formatDate } from '@/utils'
+import { useUserStore } from '@/stores/user'
+
+const userStore = useUserStore()
+const currentUserId = userStore.user?.id
+const isAdmin = userStore.isAdmin
+const isDoctor = userStore.isDoctor
 
 const messages = ref<any[]>([])
 const loading = ref(false)
